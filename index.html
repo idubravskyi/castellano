@@ -17,7 +17,7 @@ h2{margin:.1rem 0 .8rem;font-size:1.45rem}h3{margin:.2rem 0 .45rem}p{margin:.45r
 .rule{border:1px solid var(--line);border-radius:12px;padding:15px;background:#fbfcff}
 .example{font-size:1.12rem;font-weight:700;color:var(--blue)}
 .pill{display:inline-block;background:#edf1ff;color:#2949b8;border-radius:99px;padding:3px 9px;font-size:.82rem}
-.task{padding:14px 0;border-top:1px solid var(--line)}.task:first-of-type{border-top:0}
+.classify-row{display:grid;grid-template-columns:minmax(100px,1fr) minmax(185px,1.8fr) minmax(135px,1fr);gap:12px;align-items:center}.classify-answer{font-weight:700;font-size:1.08rem}.classify-answer:empty{display:none}@media(max-width:620px){.classify-row{grid-template-columns:minmax(75px,1fr) minmax(155px,2fr)}.classify-answer{grid-column:2}}.task{padding:14px 0;border-top:1px solid var(--line)}.task:first-of-type{border-top:0}
 input[type=text]{padding:10px 12px;border:1px solid #cbd2df;border-radius:9px;font:inherit;max-width:100%}
 select{padding:8px}.feedback{font-weight:650;margin-top:6px}.good{color:var(--green)}.bad{color:var(--red)}
 .actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px}
@@ -57,33 +57,41 @@ footer{text-align:center;color:var(--muted);padding:30px 15px;font-size:.9rem}
 <div class="card"><h2>Поставте tilde, де потрібно</h2><p class="muted">Введіть слово з правильним написанням. Регістр не має значення.</p><div id="accents"></div><div class="actions"><button class="primary" id="checkAccent">Перевірити</button><span id="accentScore" aria-live="polite"></span></div></div>
 </section>
 <section id="test" class="panel" hidden>
-<div class="card"><h2>Мінітест A2–B1</h2><p class="muted">10 запитань. За кожну правильну відповідь — 1 бал.</p><div class="progress"><span id="bar"></span></div><div id="quiz"></div><div class="actions"><button class="primary" id="finish">Перевірити тест</button><button id="again">Спробувати ще раз</button><span id="result" aria-live="polite"></span></div></div>
+<div class="card"><h2>Мінітест A2–B1</h2><p class="muted">10 слів без позначеного наголосу. Оберіть категорію, потім перевірте відповіді. За кожну правильну — 1 бал.</p><div class="progress"><span id="bar"></span></div><div id="quiz"></div><div class="actions"><button class="primary" id="finish">Перевірити тест</button><button id="again">Спробувати ще раз</button><span id="result" aria-live="polite"></span></div></div>
 </section>
 </main><footer>Castellano · La acentuación · Матеріал для повторення рівня A2–B1</footer>
 <script>
 const $=s=>document.querySelector(s);
 document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x===b));document.querySelectorAll('.panel').forEach(x=>x.hidden=x.id!==b.dataset.tab)}));
+// The source word is shown without written accent. The correct form is revealed only after a choice.
+const removeTilde=s=>s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').normalize('NFC');
 const kinds=[['café','aguda'],['árbol','llana'],['música','esdrújula'],['reloj','aguda'],['lápiz','llana'],['teléfono','esdrújula'],['sofá','aguda'],['papel','aguda'],['fácil','llana'],['casa','llana'],['pájaro','esdrújula'],['sábado','esdrújula'],['limón','aguda'],['examen','llana'],['número','esdrújula']];
-$('#classify').innerHTML=kinds.map((x,i)=>`<div class="task"><b>${i+1}. ${x[0]}</b> <select data-kind="${i}"><option value="">Оберіть…</option><option value="aguda">Aguda — останній</option><option value="llana">Llana — передостанній</option><option value="esdrújula">Esdrújula — третій від кінця</option></select><div class="feedback" id="kf${i}"></div></div>`).join('');
-$('#checkClass').onclick=()=>{let n=0;kinds.forEach((x,i)=>{let ok=document.querySelector(`[data-kind="${i}"]`).value===x[1];n+=ok?1:0;$('#kf'+i).textContent=ok?'Правильно ✓':'Правильна відповідь: '+x[1];$('#kf'+i).className='feedback '+(ok?'good':'bad')});$('#classScore').textContent=`${n}/${kinds.length} правильних`};
+const kindLabel={aguda:'Aguda',llana:'Llana',esdrújula:'Esdrújula'};
+const kindOptions='<option value="">Оберіть…</option><option value="aguda">Aguda — останній</option><option value="llana">Llana — передостанній</option><option value="esdrújula">Esdrújula — третій від кінця</option>';
+$('#classify').innerHTML=kinds.map((x,i)=>`<div class="task classify-row"><b>${i+1}. ${removeTilde(x[0])}</b><select aria-label="Тип наголосу для ${removeTilde(x[0])}" data-kind="${i}">${kindOptions}</select><div class="classify-answer" id="kf${i}" aria-live="polite"></div></div>`).join('');
+function updateKind(i){const x=kinds[i],value=document.querySelector(`[data-kind="${i}"]`).value,out=$('#kf'+i);if(!value){out.textContent='';out.className='classify-answer';return}const ok=value===x[1];out.textContent=(ok?'✓ ':'✗ ')+x[0]+(ok?'':' · '+kindLabel[x[1]]);out.className='classify-answer '+(ok?'good':'bad')}
+document.querySelectorAll('[data-kind]').forEach(el=>el.addEventListener('change',()=>{updateKind(Number(el.dataset.kind));$('#classScore').textContent=''}));
+$('#checkClass').onclick=()=>{let n=0;kinds.forEach((x,i)=>{updateKind(i);if(document.querySelector(`[data-kind="${i}"]`).value===x[1])n++});$('#classScore').textContent=`${n}/${kinds.length} правильних`};
 const words=[['cafe','café'],['arbol','árbol'],['cancion','canción'],['examen','examen'],['pais','país'],['telefono','teléfono'],['sofa','sofá'],['reloj','reloj'],['facil','fácil'],['sabado','sábado'],['limon','limón'],['casa','casa'],['rio','río'],['musica','música'],['papel','papel']];
 $('#accents').innerHTML=words.map((x,i)=>`<div class="task"><label>${i+1}. <input type="text" data-word="${i}" placeholder="${x[0]}" autocomplete="off"></label><div class="feedback" id="wf${i}"></div></div>`).join('');
 const norm=s=>s.trim().toLocaleLowerCase('es').normalize('NFC');
 $('#checkAccent').onclick=()=>{let n=0;words.forEach((x,i)=>{let ok=norm(document.querySelector(`[data-word="${i}"]`).value)===x[1];n+=ok?1:0;$('#wf'+i).textContent=ok?'Правильно ✓':'Правильно: '+x[1];$('#wf'+i).className='feedback '+(ok?'good':'bad')});$('#accentScore').textContent=`${n}/${words.length} правильних`};
+// Mini-test: no word or answer choice exposes the correct written accent in advance.
 const qs=[
-['Яке слово є aguda?',['árbol','café','música'],'café','Наголос на останньому складі; café закінчується на голосну.'],
-['Яке слово завжди має tilde?',['casa','reloj','teléfono'],'teléfono','Esdrújulas завжди мають графічний наголос.'],
-['Правильне написання: країна',['pais','país','páis'],'país','Наголошена í утворює hiato.'],
-['Виберіть “ти”',['tu','tú'],'tú','Tú — займенник; tu — присвійний прикметник.'],
-['Виберіть “ще, досі”',['aun','aún'],'aún','Aún означає todavía — ще, досі.'],
-['Яке слово llana без tilde?',['lápiz','casa','árbol'],'casa','Llanas закінчуються на голосну, -n або -s — без tilde.'],
-['У реченні “No sé ___ quieres”',['que','qué'],'qué','Непряме запитання також потребує tilde.'],
-['Яке слово має hiato?',['puerta','aire','María'],'María','María ділиться на склади Ma-rí-a.'],
-['Де правильно написане слово «субота»?',['sabado','sábado','sábádo'],'sábado','Sábado — esdrújula, тому завжди з tilde.'],
-['Як правильно: «Де ти живеш?»',['¿Donde vives?','¿Dónde vives?'],'¿Dónde vives?','У прямому запитанні dónde пишеться з tilde.']
+['canción','aguda'],['césped','llana'],['teléfono','esdrújula'],['sofá','aguda'],['examen','llana'],
+['pájaro','esdrújula'],['papel','aguda'],['fácil','llana'],['sábado','esdrújula'],['limón','aguda']
 ];
-function renderQuiz(){ $('#quiz').innerHTML=qs.map((q,i)=>`<div class="task"><b>${i+1}. ${q[0]}</b><div>${q[1].map(a=>`<label style="display:inline-block;margin:8px 14px 0 0"><input type="radio" name="q${i}" value="${a}"> ${a}</label>`).join('')}</div><div class="feedback" id="qf${i}"></div></div>`).join('');$('#bar').style.width='0%';$('#result').textContent='';}
+function renderQuiz(){
+ $('#quiz').innerHTML=qs.map((q,i)=>`<div class="task classify-row"><b>${i+1}. ${removeTilde(q[0])}</b><select aria-label="Тип наголосу для ${removeTilde(q[0])}" data-question="${i}">${kindOptions}</select><div class="classify-answer" id="qf${i}" aria-live="polite"></div></div>`).join('');
+ $('#bar').style.width='0%';$('#result').textContent='';
+}
 renderQuiz();
-$('#finish').onclick=()=>{let score=0,answered=0;qs.forEach((q,i)=>{let chosen=document.querySelector(`input[name="q${i}"]:checked`);if(chosen)answered++;let ok=chosen&&chosen.value===q[2];if(ok)score++;$('#qf'+i).textContent=(ok?'Правильно. ':'Не зовсім. Правильна відповідь: '+q[2]+'. ')+q[3];$('#qf'+i).className='feedback '+(ok?'good':'bad')});$('#bar').style.width=(score/qs.length*100)+'%';$('#result').textContent=`Результат: ${score}/${qs.length} (${Math.round(score/qs.length*100)}%). Відповіли на ${answered}/${qs.length}.`;localStorage.setItem('acentuacion-best',Math.max(score,Number(localStorage.getItem('acentuacion-best')||0)))};
+$('#finish').onclick=()=>{
+ let score=0,answered=0;
+ qs.forEach((q,i)=>{const val=document.querySelector(`[data-question="${i}"]`).value,ok=val===q[1],out=$('#qf'+i);if(val)answered++;if(ok)score++;out.textContent=(ok?'✓ ':'✗ ')+q[0]+(ok?'':' · '+kindLabel[q[1]]);out.className='classify-answer '+(ok?'good':'bad')});
+ $('#bar').style.width=(score/qs.length*100)+'%';
+ $('#result').textContent=`Результат: ${score}/${qs.length} (${Math.round(score/qs.length*100)}%). Відповіли на ${answered}/${qs.length}.`;
+ try{localStorage.setItem('acentuacion-best',Math.max(score,Number(localStorage.getItem('acentuacion-best')||0)))}catch(e){}
+};
 $('#again').onclick=renderQuiz;
 </script></body></html>
