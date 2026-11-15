@@ -58,3 +58,8 @@ button:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visi
  #classify .classify-answer{font-size:1rem;overflow-wrap:anywhere}
 }
 @media(max-width:959px){.quiz-layout{display:block}}
+
+/* Keep small navigation targets usable with touch and preserve button contrast. */
+header>a,a.tag{min-height:44px;display:inline-flex;align-items:center}
+button.primary:hover,button.active:hover,.tab.active:hover{background:var(--accent,var(--blue));color:#fff}
+@media(min-width:960px) and (orientation:landscape){.study-active header>a{min-height:44px}}
